@@ -2,7 +2,7 @@ services:
   - type: web
     name: gamepm-backend
     runtime: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npx nest build
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
