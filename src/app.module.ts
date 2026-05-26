@@ -49,6 +49,7 @@ import { StatsModule } from './stats/stats.module';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
+        ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
         entities: [
           User, Project, ProjectMember, UserStarredProject,
           Milestone, Tag, Task, BugReport,
@@ -56,7 +57,7 @@ import { StatsModule } from './stats/stats.module';
           Notification, NotificationPreference,
           ActivityLog,
         ],
-        synchronize: process.env.NODE_ENV !== 'production',
+        synchronize: config.get('DB_SYNC') !== 'false',
       }),
     }),
     AuthModule,

@@ -2,7 +2,7 @@ services:
   - type: web
     name: gamepm-backend
     runtime: node
-    buildCommand: npm ci && npx nest build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
@@ -25,3 +25,9 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SYNC
+        value: "true"
+      - key: FRONTEND_URL
+        sync: false
