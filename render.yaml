@@ -28,7 +28,7 @@ services:
       - key: DB_SSL
         value: "true"
       - key: DB_SYNC
-        value: "true"
+        value: "false"
       - key: FRONTEND_URL
         sync: false
       - key: THROTTLE_LIMIT

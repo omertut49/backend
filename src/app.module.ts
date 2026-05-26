@@ -57,7 +57,7 @@ import { StatsModule } from './stats/stats.module';
           Notification, NotificationPreference,
           ActivityLog,
         ],
-        synchronize: config.get('DB_SYNC') !== 'false',
+        synchronize: config.get('DB_SYNC') === 'true',
       }),
     }),
     AuthModule,
