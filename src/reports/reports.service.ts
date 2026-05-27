@@ -24,11 +24,9 @@ export class ReportsService {
   }
 
   async findAll(projectId: number, userId: number) {
-    const m = await this.getMembership(projectId, userId);
-    const where: any = { project: { id: projectId } };
-    if (m.role !== 'owner') where.reporter = { id: userId };
+    await this.getMembership(projectId, userId);
     return this.reportsRepo.find({
-      where,
+      where: { project: { id: projectId } },
       relations: { reporter: true },
       order: { createdAt: 'DESC' },
     });
