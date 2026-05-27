@@ -9,12 +9,16 @@ import { ProjectMember } from './projects/entities/project-member.entity';
 import { Task } from './tasks/entities/task.entity';
 import { Report } from './reports/entities/report.entity';
 import { ReportComment } from './reports/entities/report-comment.entity';
+import { IdeaSession } from './ideas/entities/idea-session.entity';
+import { GameIdea } from './ideas/entities/game-idea.entity';
+import { Mechanic } from './ideas/entities/mechanic.entity';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ReportsModule } from './reports/reports.module';
+import { IdeasModule } from './ideas/ideas.module';
 
 @Module({
   imports: [
@@ -36,7 +40,7 @@ import { ReportsModule } from './reports/reports.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
         ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
-        entities: [User, Project, ProjectMember, Task, Report, ReportComment],
+        entities: [User, Project, ProjectMember, Task, Report, ReportComment, IdeaSession, GameIdea, Mechanic],
         synchronize: config.get('DB_SYNC') === 'true',
       }),
     }),
@@ -45,6 +49,7 @@ import { ReportsModule } from './reports/reports.module';
     ProjectsModule,
     TasksModule,
     ReportsModule,
+    IdeasModule,
   ],
 })
 export class AppModule {}
