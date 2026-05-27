@@ -23,20 +23,26 @@ export class TasksService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  private async checkProjectAccess(projectId: number, userId: number, role: string) {
+  private async checkProjectAccess(projectId: number, userId: number) {
     const project = await this.projectsRepo.findOneBy({ id: projectId });
     if (!project) throw new NotFoundException('Proje bulunamadı');
-    if (role !== 'admin') {
-      const member = await this.membersRepo.findOne({
-        where: { project: { id: projectId }, user: { id: userId } },
-      });
-      if (!member) throw new ForbiddenException('Bu projeye erişim yetkiniz yok');
-    }
+    const member = await this.membersRepo.findOne({
+      where: { project: { id: projectId }, user: { id: userId } },
+    });
+    if (!member) throw new ForbiddenException('Bu projeye erişim yetkiniz yok');
     return project;
   }
 
+  private async requireProjectOwner(projectId: number, userId: number) {
+    const member = await this.membersRepo.findOne({
+      where: { project: { id: projectId }, user: { id: userId }, role: 'owner' },
+    });
+    if (!member) throw new ForbiddenException('Sadece proje sahibi bu işlemi yapabilir');
+  }
+
   async create(dto: CreateTaskDto, userId: number, role: string): Promise<Task> {
-    const project = await this.checkProjectAccess(dto.projectId, userId, role);
+    const project = await this.checkProjectAccess(dto.projectId, userId);
+    await this.requireProjectOwner(dto.projectId, userId);
     const { projectId, assigneeId, milestoneId, parentTaskId, tagIds, ...rest } = dto;
 
     const task = this.tasksRepo.create({ ...rest, project });
@@ -102,12 +108,10 @@ export class TasksService {
       .leftJoinAndSelect('task.parentTask', 'parentTask')
       .where('task.deletedAt IS NULL');
 
-    if (role !== 'admin') {
-      query
-        .innerJoin('project.members', 'member')
-        .innerJoin('member.user', 'memberUser')
-        .andWhere('memberUser.id = :userId', { userId });
-    }
+    query
+      .innerJoin('project.members', 'member')
+      .innerJoin('member.user', 'memberUser')
+      .andWhere('memberUser.id = :userId', { userId });
 
     if (projectId) query.andWhere('project.id = :projectId', { projectId });
     if (status) query.andWhere('task.status = :status', { status });
@@ -128,7 +132,7 @@ export class TasksService {
       relations: { assignee: true, project: true, milestone: true, tags: true, parentTask: true },
     });
     if (!task) throw new NotFoundException(`Görev ${id} bulunamadı`);
-    await this.checkProjectAccess(task.project.id, userId, role);
+    await this.checkProjectAccess(task.project.id, userId);
     return task;
   }
 
@@ -191,6 +195,7 @@ export class TasksService {
 
   async remove(id: number, userId: number, role: string): Promise<void> {
     const task = await this.findOne(id, userId, role);
+    await this.requireProjectOwner(task.project.id, userId);
     await this.tasksRepo.softDelete(id);
 
     this.eventEmitter.emit('activity.log', {
@@ -214,12 +219,10 @@ export class TasksService {
       .where('task.dueDate BETWEEN :start AND :end', { start, end })
       .andWhere('task.deletedAt IS NULL');
 
-    if (role !== 'admin') {
-      query
-        .innerJoin('project.members', 'member')
-        .innerJoin('member.user', 'memberUser')
-        .andWhere('memberUser.id = :userId', { userId });
-    }
+    query
+      .innerJoin('project.members', 'member')
+      .innerJoin('member.user', 'memberUser')
+      .andWhere('memberUser.id = :userId', { userId });
 
     return query.getMany();
   }

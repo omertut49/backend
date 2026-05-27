@@ -23,20 +23,25 @@ export class BugReportsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  private async checkProjectAccess(projectId: number, userId: number, role: string) {
+  private async checkProjectAccess(projectId: number, userId: number) {
     const project = await this.projectsRepo.findOneBy({ id: projectId });
     if (!project) throw new NotFoundException('Proje bulunamadı');
-    if (role !== 'admin') {
-      const member = await this.membersRepo.findOne({
-        where: { project: { id: projectId }, user: { id: userId } },
-      });
-      if (!member) throw new ForbiddenException('Bu projeye erişim yetkiniz yok');
-    }
+    const member = await this.membersRepo.findOne({
+      where: { project: { id: projectId }, user: { id: userId } },
+    });
+    if (!member) throw new ForbiddenException('Bu projeye erişim yetkiniz yok');
     return project;
   }
 
+  private async isProjectOwner(projectId: number, userId: number): Promise<boolean> {
+    const member = await this.membersRepo.findOne({
+      where: { project: { id: projectId }, user: { id: userId }, role: 'owner' },
+    });
+    return !!member;
+  }
+
   async create(dto: CreateBugReportDto, userId: number, role: string): Promise<BugReport> {
-    const project = await this.checkProjectAccess(dto.projectId, userId, role);
+    const project = await this.checkProjectAccess(dto.projectId, userId);
     const reporter = await this.usersRepo.findOneBy({ id: userId });
     const { projectId, assigneeId, linkedTaskId, tagIds, ...rest } = dto;
 
@@ -102,12 +107,10 @@ export class BugReportsService {
       .leftJoinAndSelect('bug.tags', 'tags')
       .where('bug.deletedAt IS NULL');
 
-    if (role !== 'admin') {
-      query
-        .innerJoin('project.members', 'member')
-        .innerJoin('member.user', 'memberUser')
-        .andWhere('memberUser.id = :userId', { userId });
-    }
+    query
+      .innerJoin('project.members', 'member')
+      .innerJoin('member.user', 'memberUser')
+      .andWhere('memberUser.id = :userId', { userId });
 
     if (projectId) query.andWhere('project.id = :projectId', { projectId });
     if (status) query.andWhere('bug.status = :status', { status });
@@ -128,7 +131,7 @@ export class BugReportsService {
       relations: { reporter: true, assignee: true, project: true, linkedTask: true, tags: true },
     });
     if (!bug) throw new NotFoundException(`Bug ${id} bulunamadı`);
-    await this.checkProjectAccess(bug.project.id, userId, role);
+    await this.checkProjectAccess(bug.project.id, userId);
     return bug;
   }
 
@@ -188,8 +191,9 @@ export class BugReportsService {
   async remove(id: number, userId: number, role: string): Promise<void> {
     const bug = await this.findOne(id, userId, role);
 
-    if (role !== 'admin' && bug.reporter?.id !== userId) {
-      throw new ForbiddenException('Sadece raporlayan veya admin silebilir');
+    const owner = await this.isProjectOwner(bug.project.id, userId);
+    if (!owner && bug.reporter?.id !== userId) {
+      throw new ForbiddenException('Sadece raporlayan veya proje sahibi silebilir');
     }
 
     await this.bugsRepo.softDelete(id);

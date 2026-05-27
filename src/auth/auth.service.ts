@@ -25,12 +25,8 @@ export class AuthService {
       .getOne();
     if (existing) throw new ConflictException('Bu email zaten kayıtlı');
 
-    // First registered user automatically becomes admin
-    const count = await this.usersRepository.count();
-    const role = count === 0 ? 'admin' : (dto.role ?? 'developer');
-
     const hashed = await bcrypt.hash(dto.password, 10);
-    const user = this.usersRepository.create({ ...dto, password: hashed, role });
+    const user = this.usersRepository.create({ ...dto, password: hashed });
     try {
       await this.usersRepository.save(user);
     } catch (err: unknown) {
