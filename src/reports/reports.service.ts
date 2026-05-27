@@ -54,13 +54,9 @@ export class ReportsService {
     if (!report) throw new NotFoundException('Rapor bulunamadı');
 
     const m = await this.membersRepo.findOne({
-      where: { project: { id: report.project.id }, user: { id: userId } },
+      where: { project: { id: report.project.id }, user: { id: userId }, role: 'owner' },
     });
-    if (!m) throw new ForbiddenException('Erişim yetkiniz yok');
-
-    const isOwner = m.role === 'owner';
-    const isReporter = report.reporter?.id === userId;
-    if (!isOwner && !isReporter) throw new ForbiddenException('Bu raporu sadece yönetici veya raporlayan kişi çözebilir');
+    if (!m) throw new ForbiddenException('Sadece proje yöneticisi raporu çözebilir');
 
     await this.reportsRepo.update(id, {
       status: 'resolved',
