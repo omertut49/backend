@@ -24,4 +24,20 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsBoolean()
   isArchived?: boolean;
+
+  @IsOptional()
+  @IsString()
+  genre?: string;
+
+  @IsOptional()
+  @IsString()
+  platform?: string;
+
+  @IsOptional()
+  @IsString()
+  targetAudience?: string;
+
+  @IsOptional()
+  @IsString()
+  mechanics?: string;
 }

@@ -29,6 +29,18 @@ export class Project {
   @Column({ default: '#6366f1' })
   color: string;
 
+  @Column({ nullable: true })
+  genre: string;
+
+  @Column({ nullable: true })
+  platform: string;
+
+  @Column({ nullable: true })
+  targetAudience: string;
+
+  @Column({ type: 'text', nullable: true })
+  mechanics: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
