@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsNumber, IsIn, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsDateString } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -10,38 +10,18 @@ export class UpdateTaskDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['todo', 'in_progress', 'done'])
+  @IsString()
   status?: string;
 
   @IsOptional()
-  @IsIn(['low', 'medium', 'high'])
+  @IsString()
   priority?: string;
 
   @IsOptional()
   @IsDateString()
-  dueDate?: Date;
+  dueDate?: string;
 
   @IsOptional()
   @IsNumber()
-  estimatedHours?: number;
-
-  @IsOptional()
-  @IsNumber()
-  loggedHours?: number;
-
-  @IsOptional()
-  @IsNumber()
-  order?: number;
-
-  @IsOptional()
-  @IsNumber()
-  assigneeId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  milestoneId?: number;
-
-  @IsOptional()
-  @IsArray()
-  tagIds?: number[];
+  assigneeId?: number | null;
 }

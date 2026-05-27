@@ -1,8 +1,9 @@
-import { IsString, IsOptional, IsDateString, IsIn, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsDateString } from 'class-validator';
 
 export class UpdateProjectDto {
   @IsOptional()
   @IsString()
+  @MinLength(2)
   title?: string;
 
   @IsOptional()
@@ -10,34 +11,10 @@ export class UpdateProjectDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['planning', 'active', 'on_hold', 'completed', 'cancelled'])
+  @IsString()
   status?: string;
 
   @IsOptional()
   @IsDateString()
-  deadline?: Date;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isArchived?: boolean;
-
-  @IsOptional()
-  @IsString()
-  genre?: string;
-
-  @IsOptional()
-  @IsString()
-  platform?: string;
-
-  @IsOptional()
-  @IsString()
-  targetAudience?: string;
-
-  @IsOptional()
-  @IsString()
-  mechanics?: string;
+  deadline?: string;
 }

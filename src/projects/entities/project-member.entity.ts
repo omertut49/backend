@@ -16,6 +16,6 @@ export class ProjectMember {
   @ManyToOne(() => Project, (p) => p.members, { onDelete: 'CASCADE' })
   project: Project;
 
-  @ManyToOne(() => User, (u) => u.projectMemberships)
+  @ManyToOne(() => User, (u) => u.projectMemberships, { onDelete: 'CASCADE' })
   user: User;
 }

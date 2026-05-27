@@ -4,13 +4,12 @@ import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
-import { UserStarredProject } from './entities/user-starred-project.entity';
 import { User } from '../users/entities/user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, ProjectMember, UserStarredProject, User])],
+  imports: [TypeOrmModule.forFeature([Project, ProjectMember, User])],
   controllers: [ProjectsController],
   providers: [ProjectsService],
-  exports: [ProjectsService],
+  exports: [TypeOrmModule],
 })
 export class ProjectsModule {}

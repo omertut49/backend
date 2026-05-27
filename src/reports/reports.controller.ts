@@ -3,43 +3,43 @@ import {
   Delete, UseGuards, ParseIntPipe, Query,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { TasksService } from './tasks.service';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
+import { ReportsService } from './reports.service';
+import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportDto } from './dto/update-report.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-@ApiTags('Tasks')
+@ApiTags('Reports')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('tasks')
-export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+@Controller('reports')
+export class ReportsController {
+  constructor(private readonly reportsService: ReportsService) {}
 
   @Get()
   findAll(
     @Query('projectId', ParseIntPipe) projectId: number,
     @CurrentUser() user: { id: number },
   ) {
-    return this.tasksService.findAll(projectId, user.id);
+    return this.reportsService.findAll(projectId, user.id);
   }
 
   @Post()
-  create(@Body() dto: CreateTaskDto, @CurrentUser() user: { id: number }) {
-    return this.tasksService.create(dto, user.id);
+  create(@Body() dto: CreateReportDto, @CurrentUser() user: { id: number }) {
+    return this.reportsService.create(dto, user.id);
   }
 
-  @Patch(':id')
-  update(
+  @Patch(':id/status')
+  updateStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateTaskDto,
+    @Body() dto: UpdateReportDto,
     @CurrentUser() user: { id: number },
   ) {
-    return this.tasksService.update(id, dto, user.id);
+    return this.reportsService.updateStatus(id, dto, user.id);
   }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.tasksService.remove(id, user.id);
+    return this.reportsService.remove(id, user.id);
   }
 }

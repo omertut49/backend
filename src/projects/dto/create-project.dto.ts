@@ -1,8 +1,8 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsIn, IsHexColor } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsDateString } from 'class-validator';
 
 export class CreateProjectDto {
   @IsString()
-  @IsNotEmpty()
+  @MinLength(2)
   title: string;
 
   @IsOptional()
@@ -10,14 +10,6 @@ export class CreateProjectDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['planning', 'active', 'on_hold', 'completed', 'cancelled'])
-  status?: string;
-
-  @IsOptional()
   @IsDateString()
-  deadline?: Date;
-
-  @IsOptional()
-  @IsString()
-  color?: string;
+  deadline?: string;
 }

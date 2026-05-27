@@ -1,8 +1,8 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsNumber, IsIn, IsArray } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsNumber, IsDateString } from 'class-validator';
 
 export class CreateTaskDto {
   @IsString()
-  @IsNotEmpty()
+  @MinLength(2)
   title: string;
 
   @IsOptional()
@@ -10,37 +10,17 @@ export class CreateTaskDto {
   description?: string;
 
   @IsOptional()
-  @IsIn(['todo', 'in_progress', 'done'])
-  status?: string;
-
-  @IsOptional()
-  @IsIn(['low', 'medium', 'high'])
+  @IsString()
   priority?: string;
 
   @IsOptional()
   @IsDateString()
-  dueDate?: Date;
-
-  @IsOptional()
-  @IsNumber()
-  estimatedHours?: number;
-
-  @IsOptional()
-  @IsNumber()
-  assigneeId?: number;
+  dueDate?: string;
 
   @IsNumber()
   projectId: number;
 
   @IsOptional()
   @IsNumber()
-  milestoneId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  parentTaskId?: number;
-
-  @IsOptional()
-  @IsArray()
-  tagIds?: number[];
+  assigneeId?: number;
 }

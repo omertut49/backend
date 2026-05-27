@@ -1,10 +1,9 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, DeleteDateColumn, ManyToOne, OneToMany,
+  CreateDateColumn, ManyToOne, OneToMany,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { ProjectMember } from './project-member.entity';
-import { UserStarredProject } from './user-starred-project.entity';
 
 @Entity('projects')
 export class Project {
@@ -17,42 +16,18 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ default: 'planning' })
-  status: string; // planning | active | on_hold | completed | cancelled
+  @Column({ default: 'active' })
+  status: string; // planning | active | on_hold | completed
 
   @Column({ nullable: true })
   deadline: Date;
 
-  @Column({ default: false })
-  isArchived: boolean;
-
-  @Column({ default: '#6366f1' })
-  color: string;
-
-  @Column({ nullable: true })
-  genre: string;
-
-  @Column({ nullable: true })
-  platform: string;
-
-  @Column({ nullable: true })
-  targetAudience: string;
-
-  @Column({ type: 'text', nullable: true })
-  mechanics: string;
-
   @CreateDateColumn()
   createdAt: Date;
 
-  @DeleteDateColumn()
-  deletedAt: Date;
-
-  @ManyToOne(() => User)
-  owner: User;
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  owner: User | null;
 
   @OneToMany(() => ProjectMember, (pm) => pm.project)
   members: ProjectMember[];
-
-  @OneToMany(() => UserStarredProject, (usp) => usp.project)
-  starredBy: UserStarredProject[];
 }

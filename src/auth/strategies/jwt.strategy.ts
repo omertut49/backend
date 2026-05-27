@@ -19,11 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: number; email: string; role: string; tokenVersion: number }) {
+  async validate(payload: { sub: number; email: string; tokenVersion: number }) {
     const user = await this.usersRepository.findOneBy({ id: payload.sub });
     if (!user || user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException('Oturum geçersiz');
     }
-    return { id: user.id, email: user.email, role: user.role };
+    return { id: user.id, email: user.email };
   }
 }

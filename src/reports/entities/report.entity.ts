@@ -5,8 +5,8 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 
-@Entity('tasks')
-export class Task {
+@Entity('reports')
+export class Report {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -16,14 +16,14 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ default: 'todo' })
-  status: string; // todo | in_progress | done
+  @Column({ default: 'bug' })
+  type: string; // bug | suggestion
 
-  @Column({ default: 'medium' })
-  priority: string; // low | medium | high
+  @Column({ default: 'open' })
+  status: string; // open | resolved
 
   @Column({ nullable: true })
-  dueDate: Date;
+  severity: string; // low | medium | high | critical (sadece bug için)
 
   @CreateDateColumn()
   createdAt: Date;
@@ -32,5 +32,5 @@ export class Task {
   project: Project;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  assignee: User | null;
+  reporter: User | null;
 }

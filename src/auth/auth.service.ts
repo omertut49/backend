@@ -50,8 +50,6 @@ export class AuthService {
     const match = await bcrypt.compare(dto.password, user.password);
     if (!match) throw new UnauthorizedException('Email veya şifre hatalı');
 
-    await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
-
     return this.signTokens(user);
   }
 
@@ -76,14 +74,14 @@ export class AuthService {
   }
 
   private signTokens(user: User) {
-    const payload = { sub: user.id, email: user.email, role: user.role, tokenVersion: user.tokenVersion };
+    const payload = { sub: user.id, email: user.email, tokenVersion: user.tokenVersion };
     return {
       access_token: this.jwtService.sign(payload),
       refresh_token: this.jwtService.sign(payload, {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN'),
       }),
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl },
+      user: { id: user.id, name: user.name, email: user.email },
     };
   }
 }
