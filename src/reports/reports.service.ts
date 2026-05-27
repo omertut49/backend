@@ -4,6 +4,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Report } from './entities/report.entity';
+import { ReportComment } from './entities/report-comment.entity';
 import { ProjectMember } from '../projects/entities/project-member.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
@@ -12,6 +13,7 @@ import { UpdateReportDto } from './dto/update-report.dto';
 export class ReportsService {
   constructor(
     @InjectRepository(Report) private reportsRepo: Repository<Report>,
+    @InjectRepository(ReportComment) private commentsRepo: Repository<ReportComment>,
     @InjectRepository(ProjectMember) private membersRepo: Repository<ProjectMember>,
   ) {}
 
@@ -83,5 +85,56 @@ export class ReportsService {
 
     await this.reportsRepo.delete(id);
     return { message: 'Rapor silindi' };
+  }
+
+  // ─── Comments ───────────────────────────────────────────────────────────────
+
+  async getComments(reportId: number, userId: number) {
+    const report = await this.reportsRepo.findOne({
+      where: { id: reportId },
+      relations: { project: true },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    await this.getMembership(report.project.id, userId);
+    return this.commentsRepo.find({
+      where: { report: { id: reportId } },
+      relations: { author: true },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async addComment(reportId: number, content: string, userId: number) {
+    const report = await this.reportsRepo.findOne({
+      where: { id: reportId },
+      relations: { project: true },
+    });
+    if (!report) throw new NotFoundException('Rapor bulunamadı');
+    await this.getMembership(report.project.id, userId);
+    const comment = this.commentsRepo.create({
+      content,
+      report: { id: reportId },
+      author: { id: userId },
+    });
+    return this.commentsRepo.save(comment);
+  }
+
+  async deleteComment(commentId: number, userId: number) {
+    const comment = await this.commentsRepo.findOne({
+      where: { id: commentId },
+      relations: { author: true, report: { project: true } },
+    });
+    if (!comment) throw new NotFoundException('Yorum bulunamadı');
+
+    const m = await this.membersRepo.findOne({
+      where: { project: { id: comment.report.project.id }, user: { id: userId } },
+    });
+    if (!m) throw new ForbiddenException('Erişim yetkiniz yok');
+
+    const isOwner = m.role === 'owner';
+    const isAuthor = comment.author?.id === userId;
+    if (!isOwner && !isAuthor) throw new ForbiddenException('Bu yorumu silemezsiniz');
+
+    await this.commentsRepo.delete(commentId);
+    return { message: 'Yorum silindi' };
   }
 }

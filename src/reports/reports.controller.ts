@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -41,5 +42,27 @@ export class ReportsController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
     return this.reportsService.remove(id, user.id);
+  }
+
+  @Get(':id/comments')
+  getComments(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
+    return this.reportsService.getComments(id, user.id);
+  }
+
+  @Post(':id/comments')
+  addComment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateCommentDto,
+    @CurrentUser() user: { id: number },
+  ) {
+    return this.reportsService.addComment(id, dto.content, user.id);
+  }
+
+  @Delete(':id/comments/:commentId')
+  deleteComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @CurrentUser() user: { id: number },
+  ) {
+    return this.reportsService.deleteComment(commentId, user.id);
   }
 }

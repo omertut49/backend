@@ -8,6 +8,7 @@ import { Project } from './projects/entities/project.entity';
 import { ProjectMember } from './projects/entities/project-member.entity';
 import { Task } from './tasks/entities/task.entity';
 import { Report } from './reports/entities/report.entity';
+import { ReportComment } from './reports/entities/report-comment.entity';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -35,7 +36,7 @@ import { ReportsModule } from './reports/reports.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
         ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
-        entities: [User, Project, ProjectMember, Task, Report],
+        entities: [User, Project, ProjectMember, Task, Report, ReportComment],
         synchronize: config.get('DB_SYNC') === 'true',
       }),
     }),
