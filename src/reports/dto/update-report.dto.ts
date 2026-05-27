@@ -4,4 +4,8 @@ export class UpdateReportDto {
   @IsOptional()
   @IsString()
   status?: string; // open | resolved
+
+  @IsOptional()
+  @IsString()
+  resolutionNote?: string;
 }

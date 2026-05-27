@@ -29,13 +29,13 @@ export class ReportsController {
     return this.reportsService.create(dto, user.id);
   }
 
-  @Patch(':id/status')
-  updateStatus(
+  @Patch(':id/resolve')
+  resolve(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateReportDto,
     @CurrentUser() user: { id: number },
   ) {
-    return this.reportsService.updateStatus(id, dto, user.id);
+    return this.reportsService.resolve(id, dto, user.id);
   }
 
   @Delete(':id')

@@ -53,7 +53,7 @@ export class TasksService {
       title: dto.title,
       description: dto.description,
       priority: dto.priority ?? 'medium',
-      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      status: 'todo',
       project: { id: dto.projectId },
       assignee,
     });
@@ -63,7 +63,7 @@ export class TasksService {
   async update(id: number, dto: UpdateTaskDto, userId: number) {
     const task = await this.tasksRepo.findOne({
       where: { id },
-      relations: { project: true },
+      relations: { project: true, assignee: true },
     });
     if (!task) throw new NotFoundException('Görev bulunamadı');
     await this.assertOwner(task.project.id, userId);
@@ -80,6 +80,28 @@ export class TasksService {
 
     const { assigneeId, ...rest } = dto;
     Object.assign(task, rest);
+    return this.tasksRepo.save(task);
+  }
+
+  // Atanan kişi (veya admin) görevi tamamlar ve not bırakır
+  async complete(id: number, userId: number, note?: string) {
+    const task = await this.tasksRepo.findOne({
+      where: { id },
+      relations: { project: true, assignee: true },
+    });
+    if (!task) throw new NotFoundException('Görev bulunamadı');
+
+    const isOwner = await this.membersRepo.findOne({
+      where: { project: { id: task.project.id }, user: { id: userId }, role: 'owner' },
+    });
+    const isAssignee = task.assignee?.id === userId;
+
+    if (!isOwner && !isAssignee) {
+      throw new ForbiddenException('Bu görevi sadece atanan kişi veya yönetici tamamlayabilir');
+    }
+
+    task.status = 'done';
+    task.completionNote = note ?? null;
     return this.tasksRepo.save(task);
   }
 

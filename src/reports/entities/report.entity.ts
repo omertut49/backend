@@ -25,6 +25,9 @@ export class Report {
   @Column({ nullable: true })
   severity: string; // low | medium | high | critical (sadece bug için)
 
+  @Column({ type: 'text', nullable: true })
+  resolutionNote: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

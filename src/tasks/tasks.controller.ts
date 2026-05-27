@@ -3,11 +3,18 @@ import {
   Delete, UseGuards, ParseIntPipe, Query,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
+class CompleteTaskDto {
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
 
 @ApiTags('Tasks')
 @ApiBearerAuth()
@@ -36,6 +43,15 @@ export class TasksController {
     @CurrentUser() user: { id: number },
   ) {
     return this.tasksService.update(id, dto, user.id);
+  }
+
+  @Patch(':id/complete')
+  complete(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CompleteTaskDto,
+    @CurrentUser() user: { id: number },
+  ) {
+    return this.tasksService.complete(id, user.id, dto.note);
   }
 
   @Delete(':id')

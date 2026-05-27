@@ -40,6 +40,7 @@ export class ReportsService {
       title: dto.title,
       description: dto.description,
       type: dto.type,
+      status: 'open',
       severity: dto.type === 'bug' ? (dto.severity ?? 'medium') : undefined,
       project: { id: dto.projectId },
       reporter: { id: userId },
@@ -47,7 +48,7 @@ export class ReportsService {
     return this.reportsRepo.save(report);
   }
 
-  async updateStatus(id: number, dto: UpdateReportDto, userId: number) {
+  async resolve(id: number, dto: UpdateReportDto, userId: number) {
     const report = await this.reportsRepo.findOne({
       where: { id },
       relations: { project: true },
@@ -57,10 +58,13 @@ export class ReportsService {
     const m = await this.membersRepo.findOne({
       where: { project: { id: report.project.id }, user: { id: userId }, role: 'owner' },
     });
-    if (!m) throw new ForbiddenException('Sadece proje yöneticisi rapor durumunu değiştirebilir');
+    if (!m) throw new ForbiddenException('Sadece proje yöneticisi raporu çözebilir');
 
-    await this.reportsRepo.update(id, { status: dto.status });
-    return { ...report, status: dto.status };
+    await this.reportsRepo.update(id, {
+      status: 'resolved',
+      resolutionNote: dto.resolutionNote,
+    });
+    return { ...report, status: 'resolved', resolutionNote: dto.resolutionNote };
   }
 
   async remove(id: number, userId: number) {

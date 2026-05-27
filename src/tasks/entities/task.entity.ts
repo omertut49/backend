@@ -22,8 +22,8 @@ export class Task {
   @Column({ default: 'medium' })
   priority: string; // low | medium | high
 
-  @Column({ nullable: true })
-  dueDate: Date;
+  @Column({ type: 'text', nullable: true })
+  completionNote: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
