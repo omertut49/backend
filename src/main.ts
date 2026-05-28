@@ -16,7 +16,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin === 'https://localhost' || origin === 'http://localhost') {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
