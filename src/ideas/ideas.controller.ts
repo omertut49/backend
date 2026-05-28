@@ -74,4 +74,9 @@ export class IdeasController {
   toggleMechanicVote(@Param('mechId', ParseIntPipe) mechId: number, @CurrentUser() user: { id: number }) {
     return this.ideasService.toggleMechanicVote(mechId, user.id);
   }
+
+  @Post(':id/ai-summary')
+  getAiSummary(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
+    return this.ideasService.getAiSummary(id, user.id);
+  }
 }
