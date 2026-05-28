@@ -79,4 +79,9 @@ export class IdeasController {
   getAiSummary(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
     return this.ideasService.getAiSummary(id, user.id);
   }
+
+  @Post(':id/project-plan')
+  getProjectPlan(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
+    return this.ideasService.getProjectPlan(id, user.id);
+  }
 }

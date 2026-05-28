@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IdeaSession } from './entities/idea-session.entity';
@@ -177,6 +177,37 @@ export class IdeasService {
 
     const summary = await this.geminiService.analyzeIdeas(session.title, session.description, ideas);
     return { summary };
+  }
+
+  async getProjectPlan(sessionId: number, userId: number) {
+    const session = await this.sessionsRepo.findOne({
+      where: { id: sessionId },
+      relations: { creator: true },
+    });
+    if (!session) throw new NotFoundException('Oturum bulunamadı');
+
+    const rawIdeas = await this.ideasRepo.find({
+      where: { session: { id: sessionId } },
+      relations: { voters: true, mechanics: { voters: true } },
+      order: { createdAt: 'ASC' },
+    });
+
+    if (rawIdeas.length === 0) {
+      throw new BadRequestException('Plan oluşturabilmek için en az bir fikir olmalıdır.');
+    }
+
+    const ideas = rawIdeas.map((idea) => ({
+      title: idea.title,
+      description: idea.description,
+      voteCount: idea.voters.length,
+      mechanics: (idea.mechanics ?? []).map((m) => ({
+        title: m.title,
+        description: m.description,
+        voteCount: m.voters.length,
+      })),
+    }));
+
+    return this.geminiService.generateProjectPlan(session.title, session.description, ideas);
   }
 
   async toggleMechanicVote(mechanicId: number, userId: number) {

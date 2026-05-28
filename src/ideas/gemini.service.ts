@@ -76,4 +76,67 @@ Maksimum 350 kelime, sade ve uygulanabilir bir dil kullan.`;
       throw new InternalServerErrorException('AI analizi başarısız: ' + (err?.message ?? 'Bilinmeyen hata'));
     }
   }
+
+  async generateProjectPlan(
+    sessionTitle: string,
+    sessionDescription: string | null,
+    ideas: Array<{
+      title: string;
+      description: string | null;
+      voteCount: number;
+      mechanics: Array<{ title: string; description: string | null; voteCount: number }>;
+    }>,
+  ): Promise<{ projectName: string; projectDescription: string; tasks: Array<{ title: string; description: string; priority: string }> }> {
+    const apiKey = this.config.get<string>('GEMINI_API_KEY');
+    if (!apiKey) throw new InternalServerErrorException('GEMINI_API_KEY tanımlı değil');
+
+    const ideasText = ideas
+      .sort((a, b) => b.voteCount - a.voteCount)
+      .map((idea) => {
+        const mechanics =
+          idea.mechanics.length > 0
+            ? idea.mechanics
+                .sort((a, b) => b.voteCount - a.voteCount)
+                .map((m) => `   • ${m.title} (${m.voteCount} oy)`)
+                .join('\n')
+            : '   • Mekanik yok';
+        return `- ${idea.title} (${idea.voteCount} oy)${idea.description ? ': ' + idea.description : ''}\n  Mekanikler:\n${mechanics}`;
+      })
+      .join('\n\n');
+
+    const prompt = `Sen deneyimli bir oyun geliştirme proje yöneticisisin. Bir ekip aşağıdaki oyun fikirlerini ve mekaniklerini oyladı.
+
+Oturum: ${sessionTitle}${sessionDescription ? `\nKonu: ${sessionDescription}` : ''}
+
+Fikirler ve Mekanikler:
+${ideasText}
+
+Oy sayılarına göre en güçlü fikirleri birleştirerek somut bir oyun projesi görev listesi oluştur.
+
+SADECE geçerli JSON döndür, başka hiçbir şey yazma:
+{
+  "projectName": "kısa proje adı",
+  "projectDescription": "1-2 cümle açıklama",
+  "tasks": [
+    { "title": "görev başlığı", "description": "kısa açıklama", "priority": "high" }
+  ]
+}
+
+Kurallar:
+- 8-12 arası görev öner
+- priority sadece: high, medium, low
+- Görevler oyun geliştirme aşamalarını kapsamalı (tasarım, programlama, sanat, ses, test)
+- Tüm metinler Türkçe olmalı`;
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Geçerli JSON bulunamadı');
+      return JSON.parse(jsonMatch[0]);
+    } catch (err: any) {
+      throw new InternalServerErrorException('Proje planı oluşturulamadı: ' + (err?.message ?? 'Bilinmeyen hata'));
+    }
+  }
 }
