@@ -69,7 +69,7 @@ Bu konsept için en uygun mekanikleri listele.
 Maksimum 350 kelime, sade ve uygulanabilir bir dil kullan.`;
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       const result = await model.generateContent(prompt);
       return result.response.text();
     } catch (err: any) {
