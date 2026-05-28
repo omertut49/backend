@@ -1,39 +1,55 @@
-import {
-  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  ManyToOne,
-} from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Project } from '../../projects/entities/project.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Player } from '../../players/entities/player.entity';
+import { Game } from '../../games/entities/game.entity';
+import { ReportComment } from './report-comment.entity';
+
+export type ReportType = 'bug' | 'suggestion';
+export type ReportStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type ReportPriority = 'low' | 'medium' | 'high' | 'critical';
 
 @Entity('reports')
 export class Report {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   title: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text' })
   description: string;
 
   @Column({ default: 'bug' })
-  type: string; // bug | suggestion
+  type: ReportType;
 
   @Column({ default: 'open' })
-  status: string; // open | resolved
+  status: ReportStatus;
+
+  @Column({ default: 'medium' })
+  priority: ReportPriority;
+
+  @Column({ nullable: true, type: 'text' })
+  resolutionNote: string;
+
+  @ManyToOne(() => Player, (p) => p.reports, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'playerId' })
+  player: Player;
 
   @Column({ nullable: true })
-  severity: string; // low | medium | high | critical (sadece bug için)
+  playerId: string;
 
-  @Column({ type: 'text', nullable: true })
-  resolutionNote: string;
+  @ManyToOne(() => Game, (g) => g.reports, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'gameId' })
+  game: Game;
+
+  @Column()
+  gameId: string;
+
+  @OneToMany(() => ReportComment, (c) => c.report)
+  comments: ReportComment[];
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Project, { onDelete: 'CASCADE' })
-  project: Project;
-
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  reporter: User | null;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

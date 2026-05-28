@@ -4,10 +4,9 @@ import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { Report } from './entities/report.entity';
 import { ReportComment } from './entities/report-comment.entity';
-import { ProjectMember } from '../projects/entities/project-member.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Report, ReportComment, ProjectMember])],
+  imports: [TypeOrmModule.forFeature([Report, ReportComment])],
   controllers: [ReportsController],
   providers: [ReportsService],
 })

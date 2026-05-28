@@ -1,21 +1,18 @@
-import { IsString, IsEmail, IsNotEmpty, MinLength, IsOptional, IsIn, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
+  @ApiProperty()
   @IsEmail()
   email: string;
 
+  @ApiProperty()
   @IsString()
-  @MinLength(8)
-  @Matches(/(?=.*[A-Za-z])(?=.*[0-9])/, {
-    message: 'Şifre en az bir harf ve bir rakam içermelidir',
-  })
-  password: string;
+  @MinLength(3)
+  username: string;
 
-  @IsOptional()
-  @IsIn(['developer', 'designer'])
-  role?: string;
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password: string;
 }

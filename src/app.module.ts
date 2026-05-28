@@ -1,55 +1,41 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
-
-import { User } from './users/entities/user.entity';
-import { Project } from './projects/entities/project.entity';
-import { ProjectMember } from './projects/entities/project-member.entity';
-import { Task } from './tasks/entities/task.entity';
-import { Report } from './reports/entities/report.entity';
-import { ReportComment } from './reports/entities/report-comment.entity';
-import { IdeaSession } from './ideas/entities/idea-session.entity';
-import { GameIdea } from './ideas/entities/game-idea.entity';
-import { Mechanic } from './ideas/entities/mechanic.entity';
-
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { ProjectsModule } from './projects/projects.module';
-import { TasksModule } from './tasks/tasks.module';
+import { PlayersModule } from './players/players.module';
+import { GamesModule } from './games/games.module';
+import { GameSessionsModule } from './game-sessions/game-sessions.module';
 import { ReportsModule } from './reports/reports.module';
+import { CommentsModule } from './comments/comments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { IdeasModule } from './ideas/ideas.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ([{
-        ttl: (config.get<number>('THROTTLE_TTL') ?? 60) * 1000,
-        limit: config.get<number>('THROTTLE_LIMIT') ?? 10,
-      }]),
-    }),
     TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: config.get('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get('DB_USERNAME'),
-        password: config.get('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
-        ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
-        entities: [User, Project, ProjectMember, Task, Report, ReportComment, IdeaSession, GameIdea, Mechanic],
+        url: config.get('DATABASE_URL'),
+        autoLoadEntities: true,
         synchronize: config.get('DB_SYNC') === 'true',
+        ssl: { rejectUnauthorized: false },
       }),
     }),
     AuthModule,
-    UsersModule,
-    ProjectsModule,
-    TasksModule,
+    PlayersModule,
+    GamesModule,
+    GameSessionsModule,
     ReportsModule,
+    CommentsModule,
+    NotificationsModule,
     IdeasModule,
+    LeaderboardModule,
+    StatsModule,
   ],
 })
 export class AppModule {}

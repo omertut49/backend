@@ -2,14 +2,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IdeasController } from './ideas.controller';
 import { IdeasService } from './ideas.service';
-import { GeminiService } from './gemini.service';
 import { IdeaSession } from './entities/idea-session.entity';
 import { GameIdea } from './entities/game-idea.entity';
-import { Mechanic } from './entities/mechanic.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([IdeaSession, GameIdea, Mechanic])],
+  imports: [TypeOrmModule.forFeature([IdeaSession, GameIdea])],
   controllers: [IdeasController],
-  providers: [IdeasService, GeminiService],
+  providers: [IdeasService],
 })
 export class IdeasModule {}

@@ -1,87 +1,59 @@
-import {
-  Controller, Get, Post, Delete, Body, Param,
-  UseGuards, ParseIntPipe,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { IdeasService } from './ideas.service';
-import { CreateSessionDto } from './dto/create-session.dto';
-import { CreateIdeaDto } from './dto/create-idea.dto';
-import { CreateMechanicDto } from './dto/create-mechanic.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Player } from '../players/entities/player.entity';
 
 @ApiTags('Ideas')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('ideas')
 export class IdeasController {
-  constructor(private readonly ideasService: IdeasService) {}
+  constructor(private service: IdeasService) {}
 
-  @Get()
-  findAll() {
-    return this.ideasService.findAll();
+  @Post('sessions')
+  createSession(@Body('title') title: string, @CurrentUser() player: Player) {
+    return this.service.createSession(title, player.id);
   }
 
-  @Post()
-  create(@Body() dto: CreateSessionDto, @CurrentUser() user: { id: number }) {
-    return this.ideasService.create(dto.title, dto.description, user.id);
+  @Get('sessions')
+  findAllSessions() {
+    return this.service.findAllSessions();
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.findOne(id, user.id);
+  @Get('sessions/:id')
+  findSession(@Param('id') id: string) {
+    return this.service.findSession(id);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.remove(id, user.id);
+  @Delete('sessions/:id')
+  deleteSession(@Param('id') id: string) {
+    return this.service.deleteSession(id);
   }
 
-  @Post(':id/ideas')
+  @Post('sessions/:id/ideas')
   addIdea(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CreateIdeaDto,
-    @CurrentUser() user: { id: number },
+    @Param('id') sessionId: string,
+    @Body('title') title: string,
+    @Body('description') description: string,
+    @CurrentUser() player: Player,
   ) {
-    return this.ideasService.addIdea(id, dto.title, dto.description, user.id);
+    return this.service.addIdea(sessionId, title, description, player.id);
   }
 
-  @Delete(':id/ideas/:ideaId')
-  removeIdea(@Param('ideaId', ParseIntPipe) ideaId: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.removeIdea(ideaId, user.id);
+  @Post('ideas/:id/vote')
+  vote(@Param('id') id: string) {
+    return this.service.vote(id);
   }
 
-  @Post(':id/ideas/:ideaId/vote')
-  toggleIdeaVote(@Param('ideaId', ParseIntPipe) ideaId: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.toggleIdeaVote(ideaId, user.id);
+  @Post('sessions/:id/summary')
+  generateSummary(@Param('id') id: string) {
+    return this.service.generateSummary(id);
   }
 
-  @Post(':id/ideas/:ideaId/mechanics')
-  addMechanic(
-    @Param('ideaId', ParseIntPipe) ideaId: number,
-    @Body() dto: CreateMechanicDto,
-    @CurrentUser() user: { id: number },
-  ) {
-    return this.ideasService.addMechanic(ideaId, dto.title, dto.description, user.id);
-  }
-
-  @Delete(':id/ideas/:ideaId/mechanics/:mechId')
-  removeMechanic(@Param('mechId', ParseIntPipe) mechId: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.removeMechanic(mechId, user.id);
-  }
-
-  @Post(':id/ideas/:ideaId/mechanics/:mechId/vote')
-  toggleMechanicVote(@Param('mechId', ParseIntPipe) mechId: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.toggleMechanicVote(mechId, user.id);
-  }
-
-  @Post(':id/ai-summary')
-  getAiSummary(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.getAiSummary(id, user.id);
-  }
-
-  @Post(':id/project-plan')
-  getProjectPlan(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.ideasService.getProjectPlan(id, user.id);
+  @Post('sessions/:id/project-plan')
+  generateProjectPlan(@Param('id') id: string) {
+    return this.service.generateProjectPlan(id);
   }
 }

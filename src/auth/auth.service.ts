@@ -1,87 +1,85 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
+import { Player } from '../players/entities/player.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    @InjectRepository(Player) private playerRepo: Repository<Player>,
     private jwtService: JwtService,
     private config: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.usersRepository
-      .createQueryBuilder('user')
-      .withDeleted()
-      .where('user.email = :email', { email: dto.email })
-      .getOne();
-    if (existing) throw new ConflictException('Bu email zaten kayıtlı');
+    const exists = await this.playerRepo.findOne({ where: { email: dto.email } });
+    if (exists) throw new ConflictException('Bu email zaten kullanılıyor');
 
     const hashed = await bcrypt.hash(dto.password, 10);
-    const user = this.usersRepository.create({ ...dto, password: hashed });
-    try {
-      await this.usersRepository.save(user);
-    } catch (err: unknown) {
-      const pg = err as { code?: string };
-      if (pg.code === '23505') throw new ConflictException('Bu email zaten kayıtlı');
-      throw err;
-    }
+    const player = this.playerRepo.create({ ...dto, password: hashed });
+    await this.playerRepo.save(player);
 
-    return this.signTokens(user);
+    return this.generateTokens(player);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.usersRepository
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.email = :email', { email: dto.email })
-      .getOne();
+    const player = await this.playerRepo.findOne({ where: { email: dto.email } });
+    if (!player) throw new UnauthorizedException('Geçersiz email veya şifre');
 
-    if (!user) throw new UnauthorizedException('Email veya şifre hatalı');
+    const valid = await bcrypt.compare(dto.password, player.password);
+    if (!valid) throw new UnauthorizedException('Geçersiz email veya şifre');
 
-    const match = await bcrypt.compare(dto.password, user.password);
-    if (!match) throw new UnauthorizedException('Email veya şifre hatalı');
-
-    return this.signTokens(user);
+    return this.generateTokens(player);
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(token: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      const payload = this.jwtService.verify(token, {
+        secret: this.config.get('JWT_REFRESH_SECRET'),
       });
-      const user = await this.usersRepository.findOneBy({ id: payload.sub });
-      if (!user || user.tokenVersion !== payload.tokenVersion) {
-        throw new UnauthorizedException();
-      }
-      return this.signTokens(user);
+      const player = await this.playerRepo.findOne({ where: { id: payload.sub } });
+      if (!player || player.refreshToken !== token) throw new UnauthorizedException();
+      return this.generateTokens(player);
     } catch {
       throw new UnauthorizedException('Geçersiz refresh token');
     }
   }
 
-  async logoutAll(userId: number) {
-    await this.usersRepository.increment({ id: userId }, 'tokenVersion', 1);
-    return { message: 'Tüm cihazlardan çıkış yapıldı' };
+  async logout(playerId: string) {
+    await this.playerRepo.update(playerId, { refreshToken: null });
+    return { message: 'Çıkış yapıldı' };
   }
 
-  private signTokens(user: User) {
-    const payload = { sub: user.id, email: user.email, tokenVersion: user.tokenVersion };
+  private async generateTokens(player: Player) {
+    const payload = { sub: player.id, email: player.email };
+
+    const access_token = this.jwtService.sign(payload, {
+      secret: this.config.get('JWT_SECRET'),
+      expiresIn: '15m',
+    });
+
+    const refresh_token = this.jwtService.sign(payload, {
+      secret: this.config.get('JWT_REFRESH_SECRET'),
+      expiresIn: '7d',
+    });
+
+    await this.playerRepo.update(player.id, { refreshToken: refresh_token });
+
     return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: this.jwtService.sign(payload, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN'),
-      }),
-      user: { id: user.id, name: user.name, email: user.email },
+      access_token,
+      refresh_token,
+      player: {
+        id: player.id,
+        email: player.email,
+        username: player.username,
+        avatarUrl: player.avatarUrl,
+        role: player.role,
+      },
     };
   }
 }

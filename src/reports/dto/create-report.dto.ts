@@ -1,21 +1,26 @@
-import { IsString, IsOptional, MinLength, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateReportDto {
+  @ApiProperty()
   @IsString()
-  @MinLength(2)
   title: string;
 
+  @ApiProperty()
+  @IsString()
+  description: string;
+
+  @ApiProperty()
+  @IsUUID()
+  gameId: string;
+
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsEnum(['bug', 'suggestion'])
+  type?: string;
 
-  @IsString()
-  type: string; // bug | suggestion
-
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
-  severity?: string; // low | medium | high | critical
-
-  @IsNumber()
-  projectId: number;
+  @IsEnum(['low', 'medium', 'high', 'critical'])
+  priority?: string;
 }

@@ -1,68 +1,51 @@
-import {
-  Controller, Get, Post, Body, Patch, Param,
-  Delete, UseGuards, ParseIntPipe, Query,
-} from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
-import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Player } from '../players/entities/player.entity';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('reports')
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
-
-  @Get()
-  findAll(
-    @Query('projectId', ParseIntPipe) projectId: number,
-    @CurrentUser() user: { id: number },
-  ) {
-    return this.reportsService.findAll(projectId, user.id);
-  }
+  constructor(private service: ReportsService) {}
 
   @Post()
-  create(@Body() dto: CreateReportDto, @CurrentUser() user: { id: number }) {
-    return this.reportsService.create(dto, user.id);
+  create(@Body() dto: CreateReportDto, @CurrentUser() player: Player) {
+    return this.service.create(dto, player.id);
   }
 
-  @Patch(':id/resolve')
-  resolve(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateReportDto,
-    @CurrentUser() user: { id: number },
-  ) {
-    return this.reportsService.resolve(id, dto, user.id);
+  @Get()
+  @ApiQuery({ name: 'gameId', required: false })
+  findAll(@Query('gameId') gameId?: string) {
+    return this.service.findAll(gameId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateReportDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.reportsService.remove(id, user.id);
-  }
-
-  @Get(':id/comments')
-  getComments(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { id: number }) {
-    return this.reportsService.getComments(id, user.id);
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
   }
 
   @Post(':id/comments')
   addComment(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: CreateCommentDto,
-    @CurrentUser() user: { id: number },
+    @Param('id') id: string,
+    @Body('content') content: string,
+    @CurrentUser() player: Player,
   ) {
-    return this.reportsService.addComment(id, dto.content, user.id);
-  }
-
-  @Delete(':id/comments/:commentId')
-  deleteComment(
-    @Param('commentId', ParseIntPipe) commentId: number,
-    @CurrentUser() user: { id: number },
-  ) {
-    return this.reportsService.deleteComment(commentId, user.id);
+    return this.service.addComment(id, content, player.id);
   }
 }

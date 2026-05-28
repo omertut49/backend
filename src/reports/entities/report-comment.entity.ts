@@ -1,12 +1,29 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Player } from '../../players/entities/player.entity';
 import { Report } from './report.entity';
 
 @Entity('report_comments')
 export class ReportComment {
-  @PrimaryGeneratedColumn() id: number;
-  @Column({ type: 'text' }) content: string;
-  @CreateDateColumn() createdAt: Date;
-  @ManyToOne(() => Report, { onDelete: 'CASCADE' }) report: Report;
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' }) author: User | null;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'text' })
+  content: string;
+
+  @ManyToOne(() => Player, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'playerId' })
+  player: Player;
+
+  @Column({ nullable: true })
+  playerId: string;
+
+  @ManyToOne(() => Report, (r) => r.comments, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'reportId' })
+  report: Report;
+
+  @Column()
+  reportId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }
