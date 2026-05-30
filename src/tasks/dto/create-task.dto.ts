@@ -1,9 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsUUID, IsDateString, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, IsDateString, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateGameSessionDto {
+export class CreateTaskDto {
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @ApiPropertyOptional()
@@ -15,28 +16,22 @@ export class CreateGameSessionDto {
   @IsUUID()
   gameId: string;
 
+  @ApiProperty()
+  @IsUUID()
+  phaseId: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  playerId?: string;
+  assigneeId?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsEnum(['todo', 'in_progress', 'done'])
-  status?: string;
-
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['low', 'medium', 'high'] })
   @IsOptional()
   @IsEnum(['low', 'medium', 'high'])
-  priority?: string;
+  priority?: 'low' | 'medium' | 'high';
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
   dueDate?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  score?: number;
 }

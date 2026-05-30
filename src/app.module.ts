@@ -1,40 +1,44 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { buildTypeOrmConfig } from './config/database.config';
 import { AuthModule } from './auth/auth.module';
 import { PlayersModule } from './players/players.module';
 import { GamesModule } from './games/games.module';
-import { GameSessionsModule } from './game-sessions/game-sessions.module';
+import { ProjectMembersModule } from './project-members/project-members.module';
+import { PhasesModule } from './phases/phases.module';
+import { TasksModule } from './tasks/tasks.module';
 import { ReportsModule } from './reports/reports.module';
-import { CommentsModule } from './comments/comments.module';
-import { NotificationsModule } from './notifications/notifications.module';
 import { IdeasModule } from './ideas/ideas.module';
-import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: (parseInt(config.get('THROTTLE_TTL', '60'), 10) || 60) * 1000,
+          limit: parseInt(config.get('THROTTLE_LIMIT', '10'), 10) || 10,
+        },
+      ],
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: config.get('DB_SYNC') === 'true',
-        ssl: { rejectUnauthorized: false },
-      }),
+      useFactory: (config: ConfigService) => buildTypeOrmConfig(config),
     }),
     AuthModule,
     PlayersModule,
     GamesModule,
-    GameSessionsModule,
+    ProjectMembersModule,
+    PhasesModule,
+    TasksModule,
     ReportsModule,
-    CommentsModule,
-    NotificationsModule,
     IdeasModule,
-    LeaderboardModule,
     StatsModule,
   ],
 })

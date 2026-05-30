@@ -9,6 +9,6 @@ export class UpdatePlayerDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsUrl({}, { message: 'Geçerli bir URL giriniz' })
   avatarUrl?: string;
 }

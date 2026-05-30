@@ -20,22 +20,22 @@ export class GamesController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@CurrentUser() player: Player) {
+    return this.service.findAll(player.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() player: Player) {
+    return this.service.findOne(id, player.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateGameDto) {
-    return this.service.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateGameDto, @CurrentUser() player: Player) {
+    return this.service.update(id, dto, player.id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() player: Player) {
+    return this.service.remove(id, player.id);
   }
 }

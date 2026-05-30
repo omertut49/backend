@@ -2,28 +2,23 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  const frontendUrl = process.env.FRONTEND_URL;
   app.enableCors({
     origin: (origin, callback) => {
       const allowed = [
-        'http://localhost:5173',
-        'http://localhost:5174',
         'http://localhost:8081',
         'https://localhost',
         'http://localhost',
       ];
-      if (
-        !origin ||
-        allowed.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.endsWith('.netlify.app') ||
-        origin.endsWith('.onrender.com')
-      ) {
+      if (!origin || allowed.includes(origin) || (frontendUrl && origin === frontendUrl)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

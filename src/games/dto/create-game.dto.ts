@@ -1,9 +1,11 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { GameGenre, GameStatus } from '../entities/game.entity';
 
 export class CreateGameDto {
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @ApiPropertyOptional()
@@ -11,15 +13,15 @@ export class CreateGameDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['planning', 'in_progress', 'testing', 'released', 'cancelled'] })
   @IsOptional()
   @IsEnum(['planning', 'in_progress', 'testing', 'released', 'cancelled'])
-  status?: string;
+  status?: GameStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['action', 'rpg', 'puzzle', 'strategy', 'simulation', 'sports', 'other'] })
   @IsOptional()
   @IsEnum(['action', 'rpg', 'puzzle', 'strategy', 'simulation', 'sports', 'other'])
-  genre?: string;
+  genre?: GameGenre;
 
   @ApiPropertyOptional()
   @IsOptional()

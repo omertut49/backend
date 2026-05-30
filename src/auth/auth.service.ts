@@ -43,7 +43,11 @@ export class AuthService {
         secret: this.config.get('JWT_REFRESH_SECRET'),
       });
       const player = await this.playerRepo.findOne({ where: { id: payload.sub } });
-      if (!player || player.refreshToken !== token) throw new UnauthorizedException();
+      if (!player || !player.refreshToken) throw new UnauthorizedException();
+
+      const valid = await bcrypt.compare(token, player.refreshToken);
+      if (!valid) throw new UnauthorizedException();
+
       return this.generateTokens(player);
     } catch {
       throw new UnauthorizedException('Geçersiz refresh token');
@@ -60,15 +64,16 @@ export class AuthService {
 
     const access_token = this.jwtService.sign(payload, {
       secret: this.config.get('JWT_SECRET'),
-      expiresIn: '15m',
+      expiresIn: this.config.get('JWT_EXPIRES_IN', '15m'),
     });
 
     const refresh_token = this.jwtService.sign(payload, {
       secret: this.config.get('JWT_REFRESH_SECRET'),
-      expiresIn: '7d',
+      expiresIn: this.config.get('JWT_REFRESH_EXPIRES_IN', '7d'),
     });
 
-    await this.playerRepo.update(player.id, { refreshToken: refresh_token });
+    const hashedRefresh = await bcrypt.hash(refresh_token, 10);
+    await this.playerRepo.update(player.id, { refreshToken: hashedRefresh });
 
     return {
       access_token,
@@ -78,7 +83,6 @@ export class AuthService {
         email: player.email,
         username: player.username,
         avatarUrl: player.avatarUrl,
-        role: player.role,
       },
     };
   }

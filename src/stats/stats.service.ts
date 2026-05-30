@@ -1,46 +1,57 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Game } from '../games/entities/game.entity';
-import { GameSession } from '../game-sessions/entities/game-session.entity';
-import { Player } from '../players/entities/player.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { Report } from '../reports/entities/report.entity';
+import { ProjectMember } from '../project-members/entities/project-member.entity';
 
 @Injectable()
 export class StatsService {
   constructor(
     @InjectRepository(Game) private gameRepo: Repository<Game>,
-    @InjectRepository(GameSession) private sessionRepo: Repository<GameSession>,
-    @InjectRepository(Player) private playerRepo: Repository<Player>,
+    @InjectRepository(Task) private taskRepo: Repository<Task>,
     @InjectRepository(Report) private reportRepo: Repository<Report>,
+    @InjectRepository(ProjectMember) private memberRepo: Repository<ProjectMember>,
   ) {}
 
   async getDashboard(playerId: string) {
-    const [totalGames, totalPlayers, totalSessions, openReports, mySessions, myCompletedSessions] =
-      await Promise.all([
-        this.gameRepo.count(),
-        this.playerRepo.count(),
-        this.sessionRepo.count(),
-        this.reportRepo.count({ where: { status: 'open' } }),
-        this.sessionRepo.count({ where: { playerId } }),
-        this.sessionRepo.count({ where: { playerId, status: 'done' } }),
-      ]);
-
-    const recentSessions = await this.sessionRepo.find({
+    const myMemberships = await this.memberRepo.find({
       where: { playerId },
-      relations: { game: true },
+      select: { gameId: true },
+    });
+    const myGameIds = myMemberships.map((m) => m.gameId);
+
+    const [totalPlayers, myTasks, myCompletedTasks, openReports] = await Promise.all([
+      myGameIds.length
+        ? this.memberRepo
+            .createQueryBuilder('m')
+            .select('COUNT(DISTINCT m.playerId)', 'count')
+            .where('m.gameId IN (:...gameIds)', { gameIds: myGameIds })
+            .getRawOne<{ count: string }>()
+            .then((r) => parseInt(r?.count ?? '0', 10))
+        : Promise.resolve(0),
+      this.taskRepo.count({ where: { assigneeId: playerId } }),
+      this.taskRepo.count({ where: { assigneeId: playerId, status: 'done' } }),
+      myGameIds.length
+        ? this.reportRepo.count({ where: { status: 'open', gameId: In(myGameIds) } })
+        : Promise.resolve(0),
+    ]);
+
+    const recentTasks = await this.taskRepo.find({
+      where: { assigneeId: playerId },
+      relations: { game: true, phase: true },
       order: { updatedAt: 'DESC' },
       take: 5,
     });
 
     return {
-      totalGames,
+      myGames: myGameIds.length,
       totalPlayers,
-      totalSessions,
+      myTasks,
+      myCompletedTasks,
       openReports,
-      mySessions,
-      myCompletedSessions,
-      recentSessions,
+      recentTasks,
     };
   }
 }

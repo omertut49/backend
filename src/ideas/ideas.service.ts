@@ -1,82 +1,189 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { IdeaSession } from './entities/idea-session.entity';
-import { GameIdea } from './entities/game-idea.entity';
+import { Game } from '../games/entities/game.entity';
+import { Phase, DEFAULT_PHASES } from '../phases/entities/phase.entity';
+import { Task } from '../tasks/entities/task.entity';
+import { ProjectMember } from '../project-members/entities/project-member.entity';
+
+export interface AiTask {
+  title: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+}
+
+export interface AiPhase {
+  type: string;
+  tasks: AiTask[];
+}
+
+export interface AiPlan {
+  projectName: string;
+  projectDescription: string;
+  genre?: string;
+  phases: AiPhase[];
+}
 
 @Injectable()
 export class IdeasService {
-  private genAI: GoogleGenerativeAI;
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor(
     @InjectRepository(IdeaSession) private sessionRepo: Repository<IdeaSession>,
-    @InjectRepository(GameIdea) private ideaRepo: Repository<GameIdea>,
+    private dataSource: DataSource,
     private config: ConfigService,
   ) {
-    this.genAI = new GoogleGenerativeAI(config.get<string>('GEMINI_API_KEY', ''));
+    const apiKey = config.get<string>('GEMINI_API_KEY', '');
+    if (apiKey) this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  createSession(title: string, createdById: string) {
-    const session = this.sessionRepo.create({ title, createdById });
-    return this.sessionRepo.save(session);
+  async generate(prompt: string, playerId: string) {
+    if (!this.genAI) {
+      throw new InternalServerErrorException('AI servisi yapılandırılmamış (GEMINI_API_KEY eksik)');
+    }
+
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const fullPrompt = `Aşağıdaki oyun fikri için bir proje planı oluştur. Türkçe yanıt ver. Sadece JSON döndür, başka metin ekleme:
+
+{
+  "projectName": "string",
+  "projectDescription": "string",
+  "genre": "action|rpg|puzzle|strategy|simulation|sports|other",
+  "phases": [
+    { "type": "concept_design", "tasks": [{ "title": "string", "description": "string", "priority": "low|medium|high" }] },
+    { "type": "prototype", "tasks": [...] },
+    { "type": "art_visual", "tasks": [...] },
+    { "type": "production", "tasks": [...] },
+    { "type": "test_balance", "tasks": [...] },
+    { "type": "polish", "tasks": [...] },
+    { "type": "release", "tasks": [...] }
+  ]
+}
+
+Oyun fikri: ${prompt}`;
+
+    const callAI = async (): Promise<string> => {
+      const result = await model.generateContent(fullPrompt);
+      return result.response.text();
+    };
+
+    let text: string;
+    try {
+      text = await callAI();
+    } catch {
+      try {
+        text = await callAI();
+      } catch {
+        throw new InternalServerErrorException('AI servisi yanıt vermedi. Lütfen tekrar deneyin.');
+      }
+    }
+
+    const cleanJson = text.replace(/```json\n?|\n?```/g, '').trim();
+    let plan: AiPlan;
+    try {
+      plan = JSON.parse(cleanJson);
+    } catch {
+      throw new InternalServerErrorException('AI yanıtı işlenemedi. Lütfen tekrar deneyin.');
+    }
+
+    const session = this.sessionRepo.create({
+      prompt,
+      aiPlan: JSON.stringify(plan),
+      createdById: playerId,
+    });
+    const saved = await this.sessionRepo.save(session);
+
+    return { sessionId: saved.id, plan };
   }
 
-  findAllSessions() {
+  getSessions(playerId: string) {
     return this.sessionRepo.find({
-      relations: { createdBy: true, ideas: true },
+      where: { createdById: playerId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findSession(id: string) {
-    const session = await this.sessionRepo.findOne({
-      where: { id },
-      relations: { createdBy: true, ideas: { createdBy: true } },
-    });
+  private async requireSessionOwner(sessionId: string, playerId: string): Promise<IdeaSession> {
+    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Oturum bulunamadı');
+    if (session.createdById !== playerId) {
+      throw new ForbiddenException('Bu oturuma erişim yetkiniz yok');
+    }
     return session;
   }
 
-  addIdea(sessionId: string, title: string, description: string, createdById: string) {
-    const idea = this.ideaRepo.create({ sessionId, title, description, createdById });
-    return this.ideaRepo.save(idea);
+  async getSession(id: string, playerId: string) {
+    const session = await this.requireSessionOwner(id, playerId);
+    return {
+      ...session,
+      plan: session.aiPlan ? (JSON.parse(session.aiPlan) as AiPlan) : null,
+    };
   }
 
-  async vote(ideaId: string) {
-    await this.ideaRepo.increment({ id: ideaId }, 'votes', 1);
-    return this.ideaRepo.findOne({ where: { id: ideaId } });
+  async confirmProject(sessionId: string, playerId: string) {
+    const session = await this.requireSessionOwner(sessionId, playerId);
+    if (session.isConfirmed) throw new BadRequestException('Bu oturum zaten onaylandı');
+    if (!session.aiPlan) throw new BadRequestException('Oluşturulmuş plan bulunamadı');
+
+    const plan: AiPlan = JSON.parse(session.aiPlan);
+    const phaseMetaMap = Object.fromEntries(DEFAULT_PHASES.map((p) => [p.type, p]));
+
+    return this.dataSource.transaction(async (manager) => {
+      const game = manager.create(Game, {
+        title: plan.projectName,
+        description: plan.projectDescription,
+        genre: (['action', 'rpg', 'puzzle', 'strategy', 'simulation', 'sports', 'other'].includes(plan.genre ?? '')
+          ? plan.genre
+          : 'other') as Game['genre'],
+        ownerId: playerId,
+      });
+      const savedGame = await manager.save(Game, game);
+
+      const savedPhases: Record<string, Phase> = {};
+      for (const meta of DEFAULT_PHASES) {
+        const phase = manager.create(Phase, { ...meta, gameId: savedGame.id });
+        savedPhases[meta.type] = await manager.save(Phase, phase);
+      }
+
+      for (const aiPhase of plan.phases ?? []) {
+        const phase = savedPhases[aiPhase.type];
+        if (!phase || !aiPhase.tasks?.length) continue;
+        const tasks = aiPhase.tasks.map((t) =>
+          manager.create(Task, {
+            title: t.title,
+            description: t.description,
+            priority: t.priority ?? 'medium',
+            phaseId: phase.id,
+            gameId: savedGame.id,
+          }),
+        );
+        await manager.save(Task, tasks);
+      }
+
+      const member = manager.create(ProjectMember, {
+        gameId: savedGame.id,
+        playerId,
+        role: 'admin',
+      });
+      await manager.save(ProjectMember, member);
+
+      await manager.update(IdeaSession, { id: sessionId }, { isConfirmed: true });
+
+      return { gameId: savedGame.id, message: 'Proje başarıyla oluşturuldu' };
+    });
   }
 
-  async generateSummary(sessionId: string) {
-    const session = await this.findSession(sessionId);
-    const ideas = session.ideas.map((i) => `- ${i.title}: ${i.description || ''}`).join('\n');
-
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `Aşağıdaki oyun fikirleri için kısa bir Türkçe analiz yap ve en iyi 3 fikri öner:\n\n${ideas}`;
-    const result = await model.generateContent(prompt);
-    const summary = result.response.text();
-
-    await this.sessionRepo.update(sessionId, { aiSummary: summary });
-    return { summary };
-  }
-
-  async generateProjectPlan(sessionId: string) {
-    const session = await this.findSession(sessionId);
-    const ideas = session.ideas.map((i) => `- ${i.title}: ${i.description || ''}`).join('\n');
-
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `Bu oyun fikirleri için Türkçe bir proje planı oluştur. JSON formatında döndür: {"projectName": "...", "projectDescription": "...", "tasks": [{"title": "...", "description": "...", "priority": "low|medium|high"}]}. Sadece JSON döndür.\n\nFikirler:\n${ideas}`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(text);
-  }
-
-  async deleteSession(id: string) {
-    const session = await this.sessionRepo.findOne({ where: { id } });
-    if (!session) throw new NotFoundException('Oturum bulunamadı');
+  async deleteSession(id: string, playerId: string) {
+    const session = await this.requireSessionOwner(id, playerId);
     await this.sessionRepo.remove(session);
     return { message: 'Oturum silindi' };
   }

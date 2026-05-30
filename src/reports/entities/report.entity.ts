@@ -1,10 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Player } from '../../players/entities/player.entity';
 import { Game } from '../../games/entities/game.entity';
-import { ReportComment } from './report-comment.entity';
 
 export type ReportType = 'bug' | 'suggestion';
-export type ReportStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type ReportStatus = 'open' | 'pending_approval' | 'resolved' | 'closed';
 export type ReportPriority = 'low' | 'medium' | 'high' | 'critical';
 
 @Entity('reports')
@@ -28,7 +35,7 @@ export class Report {
   priority: ReportPriority;
 
   @Column({ nullable: true, type: 'text' })
-  resolutionNote: string;
+  resolutionNote: string | null;
 
   @ManyToOne(() => Player, (p) => p.reports, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'playerId' })
@@ -37,15 +44,19 @@ export class Report {
   @Column({ nullable: true })
   playerId: string;
 
+  @ManyToOne(() => Player, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'resolvedById' })
+  resolvedBy: Player;
+
+  @Column({ nullable: true })
+  resolvedById: string | null;
+
   @ManyToOne(() => Game, (g) => g.reports, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'gameId' })
   game: Game;
 
   @Column()
   gameId: string;
-
-  @OneToMany(() => ReportComment, (c) => c.report)
-  comments: ReportComment[];
 
   @CreateDateColumn()
   createdAt: Date;

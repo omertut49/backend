@@ -1,26 +1,29 @@
-import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsUUID, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { ReportPriority, ReportType } from '../entities/report.entity';
 
 export class CreateReportDto {
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @ApiProperty()
   @IsString()
+  @IsNotEmpty()
   description: string;
 
   @ApiProperty()
   @IsUUID()
   gameId: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['bug', 'suggestion'] })
   @IsOptional()
   @IsEnum(['bug', 'suggestion'])
-  type?: string;
+  type?: ReportType;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ['low', 'medium', 'high', 'critical'] })
   @IsOptional()
   @IsEnum(['low', 'medium', 'high', 'critical'])
-  priority?: string;
+  priority?: ReportPriority;
 }
