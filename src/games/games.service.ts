@@ -26,14 +26,36 @@ export class GamesService {
   ) {}
 
   async create(dto: CreateGameDto, ownerId: string) {
+    // `phases` Game kolonu değil (görev tohumu); oyun gövdesinden ayır.
+    const { phases: phaseSeeds, ...gameData } = dto;
+
     return this.dataSource.transaction(async (manager) => {
-      const game = manager.create(Game, { ...dto, ownerId });
+      const game = manager.create(Game, { ...gameData, ownerId });
       const savedGame = await manager.save(game);
 
-      const phases = DEFAULT_PHASES.map((p) =>
-        manager.create(Phase, { ...p, gameId: savedGame.id }),
-      );
-      await manager.save(Phase, phases);
+      const savedPhases: Record<string, Phase> = {};
+      for (const meta of DEFAULT_PHASES) {
+        savedPhases[meta.type] = await manager.save(
+          Phase,
+          manager.create(Phase, { ...meta, gameId: savedGame.id }),
+        );
+      }
+
+      // Manuel oluşturmada seçilen şablon/özel görevleri ilgili faza ekle.
+      for (const seed of phaseSeeds ?? []) {
+        const phase = savedPhases[seed.type];
+        if (!phase || !seed.tasks?.length) continue;
+        const tasks = seed.tasks.map((t) =>
+          manager.create(Task, {
+            title: t.title,
+            description: t.description,
+            priority: t.priority ?? 'medium',
+            phaseId: phase.id,
+            gameId: savedGame.id,
+          }),
+        );
+        await manager.save(Task, tasks);
+      }
 
       const member = manager.create(ProjectMember, {
         gameId: savedGame.id,

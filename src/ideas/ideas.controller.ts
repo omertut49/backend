@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { IdeasService } from './ideas.service';
 import { GenerateIdeaDto } from './dto/generate-idea.dto';
+import { ConfirmProjectDto } from './dto/confirm-project.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Player } from '../players/entities/player.entity';
@@ -32,8 +33,12 @@ export class IdeasController {
   }
 
   @Post('sessions/:id/confirm')
-  confirmProject(@Param('id') id: string, @CurrentUser() player: Player) {
-    return this.service.confirmProject(id, player.id);
+  confirmProject(
+    @Param('id') id: string,
+    @Body() dto: ConfirmProjectDto,
+    @CurrentUser() player: Player,
+  ) {
+    return this.service.confirmProject(id, player.id, dto);
   }
 
   @Delete('sessions/:id')

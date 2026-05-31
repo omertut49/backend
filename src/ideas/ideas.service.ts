@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
 import { IdeaSession } from './entities/idea-session.entity';
 import { Game } from '../games/entities/game.entity';
 import { Phase, DEFAULT_PHASES } from '../phases/entities/phase.entity';
@@ -51,7 +51,19 @@ export class IdeasService {
       throw new InternalServerErrorException('AI servisi yapılandırılmamış (GEMINI_API_KEY eksik)');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // thinkingConfig SDK 0.24.1 tiplerinde yok ama runtime'da API'ye iletilir.
+    // thinkingBudget: 0 → "düşünme" kapalı → ~%25 daha hızlı, daha deterministik yanıt.
+    const generationConfig: GenerationConfig & {
+      thinkingConfig: { thinkingBudget: number };
+    } = {
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingBudget: 0 },
+    };
+
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig,
+    });
     const fullPrompt = `Aşağıdaki oyun fikri için bir proje planı oluştur. Türkçe yanıt ver. Sadece JSON döndür, başka metin ekleme:
 
 {
@@ -129,12 +141,18 @@ Oyun fikri: ${prompt}`;
     };
   }
 
-  async confirmProject(sessionId: string, playerId: string) {
+  async confirmProject(sessionId: string, playerId: string, editedPlan?: AiPlan) {
     const session = await this.requireSessionOwner(sessionId, playerId);
     if (session.isConfirmed) throw new BadRequestException('Bu oturum zaten onaylandı');
-    if (!session.aiPlan) throw new BadRequestException('Oluşturulmuş plan bulunamadı');
 
-    const plan: AiPlan = JSON.parse(session.aiPlan);
+    // Kullanıcı önizlemede düzenlediyse onun planını, yoksa AI'ın ham planını kullan.
+    let plan: AiPlan;
+    if (editedPlan) {
+      plan = editedPlan;
+    } else {
+      if (!session.aiPlan) throw new BadRequestException('Oluşturulmuş plan bulunamadı');
+      plan = JSON.parse(session.aiPlan);
+    }
     const phaseMetaMap = Object.fromEntries(DEFAULT_PHASES.map((p) => [p.type, p]));
 
     return this.dataSource.transaction(async (manager) => {
