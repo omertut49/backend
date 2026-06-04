@@ -28,7 +28,12 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const player = await this.playerRepo.findOne({ where: { email: dto.email } });
+    // password kolonu entity'de select:false → karşılaştırma için açıkça iste.
+    const player = await this.playerRepo
+      .createQueryBuilder('player')
+      .addSelect('player.password')
+      .where('player.email = :email', { email: dto.email })
+      .getOne();
     if (!player) throw new UnauthorizedException('Geçersiz email veya şifre');
 
     const valid = await bcrypt.compare(dto.password, player.password);
@@ -42,7 +47,12 @@ export class AuthService {
       const payload = this.jwtService.verify(token, {
         secret: this.config.get('JWT_REFRESH_SECRET'),
       });
-      const player = await this.playerRepo.findOne({ where: { id: payload.sub } });
+      // refreshToken kolonu entity'de select:false → doğrulama için açıkça iste.
+      const player = await this.playerRepo
+        .createQueryBuilder('player')
+        .addSelect('player.refreshToken')
+        .where('player.id = :id', { id: payload.sub })
+        .getOne();
       if (!player || !player.refreshToken) throw new UnauthorizedException();
 
       const valid = await bcrypt.compare(token, player.refreshToken);

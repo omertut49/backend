@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@n
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ProjectMembersService } from './project-members.service';
 import { AddMemberDto } from './dto/add-member.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Player } from '../players/entities/player.entity';
@@ -31,10 +32,10 @@ export class ProjectMembersController {
   updateRole(
     @Param('gameId') gameId: string,
     @Param('memberId') memberId: string,
-    @Body('role') role: 'admin' | 'member',
+    @Body() dto: UpdateRoleDto,
     @CurrentUser() player: Player,
   ) {
-    return this.service.updateRole(gameId, memberId, role, player.id);
+    return this.service.updateRole(gameId, memberId, dto.role, player.id);
   }
 
   @Delete(':memberId')

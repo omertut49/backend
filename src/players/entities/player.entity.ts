@@ -16,7 +16,7 @@ export class Player {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @Column()
@@ -25,7 +25,7 @@ export class Player {
   @Column({ nullable: true })
   avatarUrl: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ nullable: true, type: 'text', select: false })
   refreshToken: string | null;
 
   @OneToMany(() => Report, (r) => r.player)

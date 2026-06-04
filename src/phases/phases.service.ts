@@ -28,21 +28,32 @@ export class PhasesService {
   async findWithProgress(gameId: string, playerId: string) {
     await this.membersService.requireMember(gameId, playerId);
     const phases = await this.repo.find({ where: { gameId }, order: { order: 'ASC' } });
+    if (!phases.length) return [];
 
-    return Promise.all(
-      phases.map(async (phase) => {
-        const tasks = await this.taskRepo.find({ where: { phaseId: phase.id } });
-        const total = tasks.length;
-        const done = tasks.filter((t) => t.status === 'done').length;
-        return {
-          ...phase,
-          progress: {
-            total,
-            done,
-            percentage: total > 0 ? Math.round((done / total) * 100) : 0,
-          },
-        };
-      }),
+    // Tüm fazların görev ilerlemesini tek sorguda hesapla (N+1 önler).
+    const rows = await this.taskRepo
+      .createQueryBuilder('t')
+      .select('t.phaseId', 'phaseId')
+      .addSelect('COUNT(*)', 'total')
+      .addSelect(`COUNT(*) FILTER (WHERE t.status = 'done')`, 'done')
+      .where('t.gameId = :gameId', { gameId })
+      .groupBy('t.phaseId')
+      .getRawMany<{ phaseId: string; total: string; done: string }>();
+
+    const byPhase = new Map(
+      rows.map((r) => [r.phaseId, { total: parseInt(r.total, 10), done: parseInt(r.done, 10) }]),
     );
+
+    return phases.map((phase) => {
+      const { total, done } = byPhase.get(phase.id) ?? { total: 0, done: 0 };
+      return {
+        ...phase,
+        progress: {
+          total,
+          done,
+          percentage: total > 0 ? Math.round((done / total) * 100) : 0,
+        },
+      };
+    });
   }
 }

@@ -22,6 +22,9 @@ export class TasksService {
 
   async create(dto: CreateTaskDto, playerId: string) {
     await this.membersService.requireAdmin(dto.gameId, playerId);
+    if (dto.assigneeId && !(await this.membersService.isMember(dto.gameId, dto.assigneeId))) {
+      throw new BadRequestException('Görev yalnızca proje üyesine atanabilir');
+    }
     const task = this.repo.create(dto);
     return this.repo.save(task);
   }
@@ -108,6 +111,13 @@ export class TasksService {
       if (dto.completionNote !== undefined) patch.completionNote = dto.completionNote;
       if (Object.keys(patch).length > 0) await this.repo.update(id, patch);
     } else {
+      if (
+        dto.assigneeId !== undefined &&
+        dto.assigneeId !== null &&
+        !(await this.membersService.isMember(task.gameId, dto.assigneeId))
+      ) {
+        throw new BadRequestException('Görev yalnızca proje üyesine atanabilir');
+      }
       await this.repo.update(id, dto);
     }
 
