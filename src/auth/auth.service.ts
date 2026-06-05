@@ -28,7 +28,6 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    // password kolonu entity'de select:false → karşılaştırma için açıkça iste.
     const player = await this.playerRepo
       .createQueryBuilder('player')
       .addSelect('player.password')
