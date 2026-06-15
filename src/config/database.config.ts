@@ -1,12 +1,14 @@
+import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 export function buildTypeOrmConfig(config: ConfigService): TypeOrmModuleOptions {
   const databaseUrl = config.get<string>('DATABASE_URL');
   const useSsl = config.get<string>('DB_SSL', 'false') === 'true';
+  const isProd = config.get('NODE_ENV') === 'production';
 
-  const synchronize =
-    config.get('NODE_ENV') !== 'production' && config.get('DB_SYNC') === 'true';
+  // Prod'da şema migration'larla yönetilir (synchronize KAPALI). Dev'de DB_SYNC ile.
+  const synchronize = !isProd && config.get('DB_SYNC') === 'true';
 
   const ssl = useSsl
     ? {
@@ -19,6 +21,10 @@ export function buildTypeOrmConfig(config: ConfigService): TypeOrmModuleOptions 
     autoLoadEntities: true,
     synchronize,
     ssl,
+    // __dirname: çalışırken dist/config → dist/migrations/*.js; ts-node CLI'da src/config → src/migrations/*.ts
+    migrations: [join(__dirname, '..', 'migrations', '*{.js,.ts}')],
+    // Prod'da boot'ta bekleyen migration'ları otomatik uygula (elle ALTER kâbusu biter).
+    migrationsRun: isProd,
   };
 
   if (databaseUrl) {
