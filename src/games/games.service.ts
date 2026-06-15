@@ -115,7 +115,9 @@ export class GamesService {
     const game = await this.repo.findOne({ where: { id } });
     if (!game) throw new NotFoundException('Proje bulunamadı');
     await this.membersService.requireAdmin(id, playerId);
-    await this.repo.update(id, dto);
+    // `phases` Game kolonu değil (görev tohumu); create() gibi burada da ayıkla.
+    const { phases: _phaseSeeds, ...gameData } = dto;
+    await this.repo.update(id, gameData);
     return this.findOne(id, playerId);
   }
 

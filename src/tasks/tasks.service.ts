@@ -22,6 +22,12 @@ export class TasksService {
 
   async create(dto: CreateTaskDto, playerId: string) {
     await this.membersService.requireAdmin(dto.gameId, playerId);
+    // Faz, görevin atandığı projeye ait olmalı (veri bütünlüğü).
+    const phase = await this.phaseRepo.findOne({ where: { id: dto.phaseId } });
+    if (!phase) throw new NotFoundException('Aşama bulunamadı');
+    if (phase.gameId !== dto.gameId) {
+      throw new BadRequestException('Aşama bu projeye ait değil');
+    }
     if (dto.assigneeId && !(await this.membersService.isMember(dto.gameId, dto.assigneeId))) {
       throw new BadRequestException('Görev yalnızca proje üyesine atanabilir');
     }
